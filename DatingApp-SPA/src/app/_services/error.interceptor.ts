@@ -30,7 +30,7 @@ export class ErrorInterceptor implements HttpInterceptor {
                     return throwError(modelStateErrors || serverError || 'Server Error');
                 }
             })
-        )
+        );
     }
 
 }
@@ -39,4 +39,4 @@ export const ErrorInterceptorProvider = {
     provide: HTTP_INTERCEPTORS,
     useClass: ErrorInterceptor,
     multi: true
-}
+};
