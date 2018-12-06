@@ -116,5 +116,45 @@ namespace DatingApp.API.Data
         {
             return await _context.Likes.FirstOrDefaultAsync(u => u.LikerId == userId && u.LikeeId == recipientId);
         }
+
+        public async Task<Message> GetMessage(int Id)
+        {
+            return await _context.Messages.FirstOrDefaultAsync(m => m.Id == Id);
+        }
+
+        public async Task<PagedList<Message>> GetMessagesForUser(MessageParams messageParams)
+        {
+            var messages = _context.Messages.Include(u => u.Sender).ThenInclude(p => p.Photos)
+            .Include(u => u.Recipient).ThenInclude(p => p.Photos).AsQueryable();
+
+            switch (messageParams.MessageContainer.ToLower()) 
+            {
+                case ("inbox"):
+                    messages = messages.Where(m => m.RecipientId == messageParams.UserId && m.RecipientDeleted == false);
+                    break;
+                case ("outbox"):
+                    messages = messages.Where(m => m.SenderId == messageParams.UserId && m.SenderDeleted == false);
+                    break;
+                default:
+                    messages = messages.Where(m => m.RecipientId == messageParams.UserId && m.RecipientDeleted == false && m.IsRead == false);
+                    break;
+            }
+
+            messages = messages.OrderByDescending(m => m.DateSent);
+            return await PagedList<Message>.CreateAsync(messages, messageParams.pageNumber, messageParams.PageSize);
+
+        }
+
+        public async Task<IEnumerable<Message>> GetMessageThread(int userID, int recipientId)
+        {
+            var messages = await _context.Messages.Include(u => u.Sender).ThenInclude(p => p.Photos)
+            .Include(u => u.Recipient).ThenInclude(p => p.Photos).AsQueryable()
+            .Where(m => m.RecipientId == userID && m.RecipientDeleted == false && m.SenderId == recipientId
+             || m.RecipientId == recipientId && m.SenderId == userID && m.SenderDeleted == false)
+             .OrderByDescending(m => m.DateSent)
+             .ToListAsync();
+
+             return messages;
+        }
     }
 }
